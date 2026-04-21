@@ -229,10 +229,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const name  = document.getElementById("sub-name").value.trim();
         const cost  = parseFloat(document.getElementById("sub-cost").value);
         const cycle = document.getElementById("sub-cycle").value;
-        const maxMembersInput = document.getElementById("sub-max-members").value;
-        const maxMembers = maxMembersInput ? parseInt(maxMembersInput) : null;
-        const isShared = maxMembers && maxMembers >= 2;
-
         const submitBtn = addSubForm.querySelector('button[type="submit"]');
         submitBtn.disabled = true;
         submitBtn.textContent = "Adding...";
@@ -245,37 +241,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 name,
                 cost,
                 cycle,
-                is_shared: isShared || false,
-                max_members: maxMembers || null
+                is_shared: false,
+                max_members: null
             }])
             .select()
             .single();
-
-        // If shared, auto-create the group
-        if (!error && isShared && subData) {
-            const { data: groupData } = await supabase
-                .from('subscription_groups')
-                .insert([{
-                    subscription_id: subData.id,
-                    owner_id: currentUser.id,
-                    name: name,
-                    cost: cost,
-                    cycle: cycle,
-                    max_members: maxMembers
-                }])
-                .select()
-                .single();
-
-            // Auto-add owner as first member
-            if (groupData) {
-                await supabase
-                    .from('group_members')
-                    .insert([{
-                        group_id: groupData.id,
-                        user_id: currentUser.id
-                    }]);
-            }
-        }
 
         submitBtn.disabled = false;
         submitBtn.textContent = "Add Plan";
