@@ -57,6 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let activeChatGroupId = null;
     let myGroupIds = new Set();
     let chatSubscription = null;
+    let pendingToggle = null; // Promise of any in-flight toggleShareSubscription write
 
     // ── DOM refs ──────────────────────────────────────────
     const authView       = document.getElementById("auth-view");
@@ -109,7 +110,7 @@ document.addEventListener("DOMContentLoaded", () => {
         switchPage('sharing');
     });
 
-    function switchPage(page) {
+    async function switchPage(page) {
         if (page === 'dashboard') {
             pageDashboard.classList.remove("hidden");
             pageSharing.classList.add("hidden");
@@ -120,6 +121,7 @@ document.addEventListener("DOMContentLoaded", () => {
             pageSharing.classList.remove("hidden");
             navDashboard.classList.remove("active");
             navSharing.classList.add("active");
+            if (pendingToggle) await pendingToggle;
             loadSharingPage();
         }
     }
@@ -264,48 +266,21 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     // ── Toggle sharing on existing subscription ──────────
-    window.toggleShareSubscription = async function(subId, isShared, name, cost, cycle, maxMembers) {
-        // Find the card's toggle and badge so we can update in-place
-        const toggleInput = document.querySelector(`input[onchange*="'${subId}'"]`);
-        const card = toggleInput ? toggleInput.closest('.sub-card') : null;
-        const subInfo = card ? card.querySelector('.sub-info') : null;
+    window.toggleShareSubscription = function(subId, isShared, name, cost, cycle, maxMembers) {
+        pendingToggle = _doToggleShare(subId, isShared, name, cost, cycle, maxMembers)
+            .finally(() => { pendingToggle = null; });
+    };
 
-        // Immediately reflect the toggle state in the UI (optimistic update)
-        if (toggleInput) toggleInput.checked = isShared;
-
-        // Update the "Shared" badge in-place
-        if (subInfo) {
-            const existingBadge = subInfo.querySelector('.share-status-badge');
-            if (isShared && !existingBadge) {
-                const badge = document.createElement('span');
-                badge.className = 'share-status-badge';
-                badge.textContent = 'Shared';
-                subInfo.appendChild(badge);
-            } else if (!isShared && existingBadge) {
-                existingBadge.remove();
-            }
-        }
-
-        // Now persist to database
-        const { error: updateError } = await supabase
+    async function _doToggleShare(subId, isShared, name, cost, cycle, maxMembers) {
+        const { data: updateData, error: updateError } = await supabase
             .from('subscriptions')
             .update({ is_shared: isShared, max_members: isShared ? (maxMembers || 4) : null })
-            .eq('id', subId);
+            .eq('id', subId)
+            .select();
 
-        if (updateError) {
-            // Revert optimistic update on failure
+        if (updateError || !updateData || updateData.length === 0) {
+            const toggleInput = document.querySelector(`input[onchange*="'${subId}'"]`);
             if (toggleInput) toggleInput.checked = !isShared;
-            if (subInfo) {
-                const badge = subInfo.querySelector('.share-status-badge');
-                if (!isShared && !badge) {
-                    const b = document.createElement('span');
-                    b.className = 'share-status-badge';
-                    b.textContent = 'Shared';
-                    subInfo.appendChild(b);
-                } else if (isShared && badge) {
-                    badge.remove();
-                }
-            }
             return;
         }
 
@@ -343,7 +318,26 @@ document.addEventListener("DOMContentLoaded", () => {
                 .eq('subscription_id', subId);
         }
 
-        // No full re-render — the card is already updated in-place
+        // Update the Shared badge in-place — no need to re-render the whole grid
+        const toggleInput = document.querySelector(`input[onchange*="'${subId}'"]`);
+        const card = toggleInput ? toggleInput.closest('.sub-card') : null;
+        const subInfo = card ? card.querySelector('.sub-info') : null;
+        if (subInfo) {
+            const existingBadge = subInfo.querySelector('.share-status-badge');
+            if (isShared && !existingBadge) {
+                const badge = document.createElement('span');
+                badge.className = 'share-status-badge';
+                badge.textContent = 'Shared';
+                subInfo.appendChild(badge);
+            } else if (!isShared && existingBadge) {
+                existingBadge.remove();
+            }
+        }
+
+        // Refresh sharing page if open so group membership is immediately consistent
+        if (!pageSharing.classList.contains('hidden')) {
+            loadSharingPage();
+        }
     };
 
     // ── Render Subscriptions ─────────────────────────────
