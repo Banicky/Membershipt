@@ -98,7 +98,17 @@
                     </div>
                     <div class="input-group">
                         <label for="sub-cost">Cost</label>
-                        <input type="number" id="sub-cost" step="0.01" min="0" required placeholder="14.99">
+                        <div class="number-input-wrapper">
+                            <input type="number" id="sub-cost" step="0.01" min="0" required placeholder="14.99">
+                            <div class="number-spin-btns">
+                                <button type="button" class="spin-up" aria-label="Increase">
+                                    <svg width="8" height="6" viewBox="0 0 8 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 5l3-3 3 3"/></svg>
+                                </button>
+                                <button type="button" class="spin-down" aria-label="Decrease">
+                                    <svg width="8" height="6" viewBox="0 0 8 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3 3 3-3"/></svg>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     <div class="input-group">
                         <label for="sub-cycle">Billing Cycle</label>

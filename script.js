@@ -59,6 +59,19 @@ document.addEventListener("DOMContentLoaded", () => {
     let chatSubscription = null;
     let pendingToggle = null; // Promise of any in-flight toggleShareSubscription write
 
+    // ── Custom number spinner for sub-cost ───────────────
+    const subCostInput = document.getElementById("sub-cost");
+    document.querySelector(".spin-up").addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        subCostInput.stepUp();
+        subCostInput.dispatchEvent(new Event("input"));
+    });
+    document.querySelector(".spin-down").addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        subCostInput.stepDown();
+        subCostInput.dispatchEvent(new Event("input"));
+    });
+
     // ── DOM refs ──────────────────────────────────────────
     const authView       = document.getElementById("auth-view");
     const authForm       = document.getElementById("auth-form");

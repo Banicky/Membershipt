@@ -204,15 +204,107 @@ input:focus, select:focus, textarea:focus {
 
 select {
     cursor: pointer;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b90a7' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23c9a84c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 1rem center;
     padding-right: 2.5rem;
+    transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+
+select:hover {
+    border-color: rgba(255,255,255,0.14);
+    background-color: rgba(255,255,255,0.03);
 }
 
 select option {
-    background: var(--bg-card);
+    background: #1a2035;
     color: var(--text-main);
+    padding: 0.5rem 1rem;
+}
+
+select option:disabled {
+    color: var(--text-muted);
+}
+
+select option:checked:not(:disabled) {
+    background: rgba(201,168,76,0.2);
+    color: var(--gold-light);
+}
+
+/* ── Number input custom spinner ─────────────────────────── */
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.number-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+}
+
+.number-input-wrapper input {
+    padding-right: 2rem;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    border-right: none;
+    flex: 1;
+}
+
+.number-input-wrapper input:focus {
+    border-color: var(--border-active);
+    background: rgba(201,168,76,0.04);
+    box-shadow: 0 0 0 3px rgba(201,168,76,0.1);
+    position: relative;
+    z-index: 1;
+}
+
+.number-spin-btns {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    overflow: hidden;
+    flex-shrink: 0;
+    transition: border-color 0.2s;
+}
+
+.number-input-wrapper:focus-within .number-spin-btns {
+    border-color: var(--border-active);
+}
+
+.spin-up, .spin-down {
+    flex: 1;
+    width: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-glass);
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: background 0.15s, color 0.15s;
+    padding: 0;
+    user-select: none;
+    line-height: 1;
+}
+
+.spin-up {
+    border-bottom: 1px solid var(--border);
+}
+
+.spin-up:hover, .spin-down:hover {
+    background: var(--gold-dim);
+    color: var(--gold);
+}
+
+.spin-up svg, .spin-down svg {
+    pointer-events: none;
 }
 
 /* ── Auth View ───────────────────────────────────────────── */
