@@ -107,10 +107,41 @@ document.addEventListener("DOMContentLoaded", () => {
     const groupSearch    = document.getElementById("group-search");
 
     // Chat
-    const chatTabs     = document.getElementById("chat-tabs");
-    const chatMessages = document.getElementById("chat-messages");
-    const chatInput    = document.getElementById("chat-input");
-    const chatSendBtn  = document.getElementById("chat-send-btn");
+    const chatTabs        = document.getElementById("chat-tabs");
+    const chatTabsWrapper = document.getElementById("chat-tabs-wrapper");
+    const chatMessages    = document.getElementById("chat-messages");
+    const chatInput       = document.getElementById("chat-input");
+    const chatSendBtn     = document.getElementById("chat-send-btn");
+
+    // ── Chat tabs drag-to-scroll ─────────────────────────
+    let tabsDragActive = false, tabsDragStartX = 0, tabsDragScrollLeft = 0;
+
+    chatTabs.addEventListener("mousedown", (e) => {
+        tabsDragActive = true;
+        tabsDragStartX = e.pageX - chatTabs.offsetLeft;
+        tabsDragScrollLeft = chatTabs.scrollLeft;
+        chatTabs.classList.add("dragging");
+    });
+    document.addEventListener("mouseup", () => {
+        tabsDragActive = false;
+        chatTabs.classList.remove("dragging");
+    });
+    chatTabs.addEventListener("mousemove", (e) => {
+        if (!tabsDragActive) return;
+        e.preventDefault();
+        const x = e.pageX - chatTabs.offsetLeft;
+        chatTabs.scrollLeft = tabsDragScrollLeft - (x - tabsDragStartX);
+    });
+
+    function updateTabFades() {
+        const { scrollLeft, scrollWidth, clientWidth } = chatTabs;
+        chatTabsWrapper.classList.toggle("fade-left",  scrollLeft > 2);
+        chatTabsWrapper.classList.toggle("fade-right", scrollLeft + clientWidth < scrollWidth - 2);
+    }
+
+    chatTabs.addEventListener("scroll", updateTabFades);
+    const tabsResizeObserver = new ResizeObserver(updateTabFades);
+    tabsResizeObserver.observe(chatTabs);
 
     // ── Navigation ───────────────────────────────────────
     navDashboard.addEventListener("click", (e) => {
@@ -868,6 +899,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         chatInput.disabled = false;
         chatSendBtn.disabled = false;
+        updateTabFades();
         loadChatMessages();
         subscribeToChat();
     }

@@ -1215,7 +1215,7 @@ input[type="number"]::-webkit-inner-spin-button {
     height: calc(100vh - 140px);
     position: sticky;
     top: 85px;
-    overflow: hidden;
+    overflow: clip;
 }
 
 .chat-panel-header {
@@ -1239,14 +1239,50 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 /* Chat Tabs */
+.chat-tabs-wrapper {
+    position: relative;
+    flex-shrink: 0;
+    min-width: 0;
+}
+
+.chat-tabs-wrapper::before,
+.chat-tabs-wrapper::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 32px;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.chat-tabs-wrapper::before {
+    left: 0;
+    background: linear-gradient(to right, var(--bg-card), transparent);
+}
+
+.chat-tabs-wrapper::after {
+    right: 0;
+    background: linear-gradient(to left, var(--bg-card), transparent);
+}
+
+.chat-tabs-wrapper.fade-left::before  { opacity: 1; }
+.chat-tabs-wrapper.fade-right::after  { opacity: 1; }
+
 .chat-tabs {
     display: flex;
     gap: 0;
     border-bottom: 1px solid var(--border);
     overflow-x: auto;
-    flex-shrink: 0;
+    min-width: 0;
     scrollbar-width: none;
+    cursor: grab;
 }
+
+.chat-tabs.dragging { cursor: grabbing; }
+
 .chat-tabs::-webkit-scrollbar { display: none; }
 
 .chat-tabs-empty {
