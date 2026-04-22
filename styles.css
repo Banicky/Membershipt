@@ -1026,6 +1026,13 @@ input[type="number"]::-webkit-inner-spin-button {
     flex: 1;
 }
 
+.group-card-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
 .group-card-name {
     font-size: 0.95rem;
     font-weight: 600;
@@ -1033,6 +1040,29 @@ input[type="number"]::-webkit-inner-spin-button {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.role-badge {
+    flex-shrink: 0;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 0.12rem 0.45rem;
+    border-radius: 99px;
+}
+
+.role-owner {
+    color: var(--gold);
+    background: var(--gold-dim);
+    border: 1px solid rgba(201,168,76,0.3);
+}
+
+.role-member {
+    color: var(--accent-teal);
+    background: rgba(56,201,192,0.1);
+    border: 1px solid rgba(56,201,192,0.2);
 }
 
 .group-card-owner {

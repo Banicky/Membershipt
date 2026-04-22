@@ -670,8 +670,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="group-card-top">
                     <div class="group-card-badge">${emoji}</div>
                     <div class="group-card-info">
-                        <p class="group-card-name">${group.name}</p>
-                        <p class="group-card-owner">${isOwner ? 'You' : 'Owner'} · ${group.cycle}</p>
+                        <div class="group-card-name-row">
+                            <p class="group-card-name">${group.name}</p>
+                            ${isMemberView ? `<span class="role-badge ${isOwner ? 'role-owner' : 'role-member'}">${isOwner ? 'Owner' : 'Member'}</span>` : ''}
+                        </div>
+                        <p class="group-card-owner">${group.cycle}</p>
                     </div>
                 </div>
                 <div class="group-card-meta">
@@ -755,13 +758,13 @@ document.addEventListener("DOMContentLoaded", () => {
         btn.textContent = '…';
 
         // Remove from group_members
-        const { error: removeError } = await supabase
+        const { error: removeError, count } = await supabase
             .from('group_members')
-            .delete()
+            .delete({ count: 'exact' })
             .eq('group_id', groupId)
             .eq('user_id', userId);
 
-        if (removeError) {
+        if (removeError || count === 0) {
             btn.disabled = false;
             btn.textContent = 'Kick';
             return;
