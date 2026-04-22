@@ -185,6 +185,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Clear in-memory data
         allGroups = [];
         myGroupIds = new Set();
+        myBannedGroupIds = new Set();
         activeChatGroupId = null;
 
         // Reset sharing page DOM to empty defaults
@@ -307,7 +308,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (groupData) {
                     await supabase
                         .from('group_members')
-                        .insert([{ group_id: groupData.id, user_id: currentUser.id }]);
+                        .insert([{ group_id: groupData.id, user_id: currentUser.id, user_email: currentUser.email }]);
                 }
             }
         } else {
@@ -460,6 +461,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ═══════════════════════════════════════════════════════
 
     let allGroups = [];
+    let myBannedGroupIds = new Set();
 
     async function loadSharingPage() {
         await Promise.all([loadAvailableGroups(), loadMyGroups()]);
@@ -479,15 +481,24 @@ document.addEventListener("DOMContentLoaded", () => {
             `).join('')}
         `;
 
-        const { data: groups, error } = await supabase
-            .from('subscription_groups')
-            .select('*, group_members(user_id)')
-            .order('created_at', { ascending: false });
+        const [groupsResult, bansResult] = await Promise.all([
+            supabase
+                .from('subscription_groups')
+                .select('*, group_members(user_id)')
+                .order('created_at', { ascending: false }),
+            supabase
+                .from('group_bans')
+                .select('group_id')
+                .eq('user_id', currentUser.id)
+        ]);
 
-        if (error || !groups) {
+        if (groupsResult.error || !groupsResult.data) {
             groupsGrid.innerHTML = `<div class="empty-state"><span class="empty-icon">⚠️</span><p>Could not load groups.</p></div>`;
             return;
         }
+
+        const groups = groupsResult.data;
+        myBannedGroupIds = new Set((bansResult.data || []).map(b => b.group_id));
 
         // Filter out groups user already belongs to
         allGroups = groups;
@@ -497,7 +508,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         groupsCountPill.textContent = `${available.length} group${available.length !== 1 ? 's' : ''}`;
-        renderGroupCards(available, groupsGrid, false);
+        renderGroupCards(available, groupsGrid, false, myBannedGroupIds);
     }
 
     // ── My groups ────────────────────────────────────────
@@ -518,7 +529,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const { data: groups } = await supabase
             .from('subscription_groups')
-            .select('*, group_members(user_id)')
+            .select('*, group_members(user_id, user_email)')
             .in('id', ids)
             .order('created_at', { ascending: false });
 
@@ -531,7 +542,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ── Render group cards ───────────────────────────────
-    function renderGroupCards(groups, container, isMemberView) {
+    function renderGroupCards(groups, container, isMemberView, bannedGroupIds = new Set()) {
         container.innerHTML = '';
 
         if (groups.length === 0) {
@@ -546,6 +557,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const isFull = memberCount >= maxMembers;
             const perPerson = (group.cost / Math.max(memberCount, 1)).toFixed(2);
             const isOwner = group.owner_id === currentUser.id;
+            const isBanned = bannedGroupIds.has(group.id);
 
             const card = document.createElement("div");
             card.className = "group-card";
@@ -560,16 +572,54 @@ document.addEventListener("DOMContentLoaded", () => {
             let actionBtn = '';
             if (isMemberView) {
                 if (isOwner) {
-                    actionBtn = `<button class="btn btn-sm btn-outline-gold" disabled style="opacity:0.6">Owner</button>`;
+                    actionBtn = `<button class="btn btn-sm btn-outline-gold" onclick="openManagePanel('${group.id}')">Manage</button>`;
                 } else {
                     actionBtn = `<button class="btn btn-sm btn-danger-outline" onclick="leaveGroup('${group.id}')">Leave</button>`;
                 }
             } else {
-                if (isFull) {
+                if (isBanned) {
+                    actionBtn = `<button class="btn btn-sm btn-secondary" disabled>Banned</button>`;
+                } else if (isFull) {
                     actionBtn = `<button class="btn btn-sm btn-secondary" disabled>Full</button>`;
                 } else {
                     actionBtn = `<button class="btn btn-sm btn-outline-gold" onclick="joinGroup('${group.id}')">Join Group</button>`;
                 }
+            }
+
+            // Owner management panel (hidden by default)
+            let managePanel = '';
+            if (isOwner && isMemberView) {
+                const members = group.group_members || [];
+                const memberRows = members.map(m => {
+                    if (m.user_id === currentUser.id) return '';
+                    return `
+                        <div class="manage-member-row" data-uid="${m.user_id}">
+                            <span class="manage-member-name">${shortName(m.user_email || m.user_id)}</span>
+                            <button class="btn btn-sm btn-danger-outline kick-btn" onclick="kickMember('${group.id}', '${m.user_id}', this)">Kick</button>
+                        </div>
+                    `;
+                }).join('');
+
+                managePanel = `
+                    <div class="manage-panel hidden" id="manage-${group.id}">
+                        <div class="manage-section">
+                            <span class="manage-label">Max Slots</span>
+                            <div class="slot-stepper">
+                                <button class="stepper-btn" onclick="adjustSlots('${group.id}', -1, this)" ${maxMembers <= memberCount ? 'disabled' : ''}>−</button>
+                                <span class="stepper-val">${maxMembers}</span>
+                                <button class="stepper-btn" onclick="adjustSlots('${group.id}', 1, this)" ${maxMembers >= 10 ? 'disabled' : ''}>＋</button>
+                            </div>
+                        </div>
+                        ${members.length > 1 ? `
+                        <div class="manage-section">
+                            <span class="manage-label">Members</span>
+                            <div class="manage-members-list">${memberRows}</div>
+                        </div>` : `
+                        <div class="manage-section">
+                            <span class="manage-label" style="color:var(--text-muted);font-style:italic">No other members yet</span>
+                        </div>`}
+                    </div>
+                `;
             }
 
             card.innerHTML = `
@@ -590,10 +640,101 @@ document.addEventListener("DOMContentLoaded", () => {
                     </div>
                 </div>
                 <div class="group-card-actions">${actionBtn}</div>
+                ${managePanel}
             `;
             container.appendChild(card);
         });
     }
+
+    // ── Open/close manage panel ──────────────────────────
+    window.openManagePanel = function(groupId) {
+        const panel = document.getElementById(`manage-${groupId}`);
+        if (!panel) return;
+        panel.classList.toggle('hidden');
+    };
+
+    // ── Adjust max slots ─────────────────────────────────
+    window.adjustSlots = async function(groupId, delta, btn) {
+        const stepper = btn.closest('.slot-stepper');
+        const valEl = stepper.querySelector('.stepper-val');
+        const current = parseInt(valEl.textContent, 10);
+        const next = current + delta;
+
+        // Find current member count from DOM
+        const card = btn.closest('.group-card');
+        const slotsText = card.querySelector('.group-card-slots').childNodes[0].textContent.trim();
+        const memberCount = parseInt(slotsText.split('/')[0], 10);
+
+        if (next < memberCount || next < 1 || next > 10) return;
+
+        const { error } = await supabase
+            .from('subscription_groups')
+            .update({ max_members: next })
+            .eq('id', groupId);
+
+        if (error) return;
+
+        // Also sync to the subscriptions table for the owner's card display
+        const { data: groupData } = await supabase
+            .from('subscription_groups')
+            .select('subscription_id')
+            .eq('id', groupId)
+            .maybeSingle();
+
+        if (groupData?.subscription_id) {
+            await supabase
+                .from('subscriptions')
+                .update({ max_members: next })
+                .eq('id', groupData.subscription_id);
+        }
+
+        // Update stepper display
+        valEl.textContent = next;
+        stepper.querySelector('button:first-child').disabled = next <= memberCount;
+        stepper.querySelector('button:last-child').disabled = next >= 10;
+
+        // Update the slot dots and count in the card
+        const slotsBar = card.querySelector('.slots-bar');
+        let dots = '';
+        for (let i = 0; i < next; i++) {
+            dots += `<span class="slot-dot ${i < memberCount ? 'filled' : ''}"></span>`;
+        }
+        slotsBar.innerHTML = dots;
+        // Rebuild the text node for X/Y display
+        const slotsContainer = card.querySelector('.group-card-slots');
+        slotsContainer.childNodes[0].textContent = `${memberCount}/${next} `;
+    };
+
+    // ── Kick member ──────────────────────────────────────
+    window.kickMember = async function(groupId, userId, btn) {
+        btn.disabled = true;
+        btn.textContent = '…';
+
+        // Remove from group_members
+        const { error: removeError } = await supabase
+            .from('group_members')
+            .delete()
+            .eq('group_id', groupId)
+            .eq('user_id', userId);
+
+        if (removeError) {
+            btn.disabled = false;
+            btn.textContent = 'Kick';
+            return;
+        }
+
+        // Add to group_bans
+        await supabase
+            .from('group_bans')
+            .insert([{ group_id: groupId, user_id: userId }]);
+
+        // Remove member row from DOM
+        const row = btn.closest('.manage-member-row');
+        row.remove();
+
+        // Refresh page data to update slot dots / counts
+        await loadSharingPage();
+    };
 
     // ── Search filter ────────────────────────────────────
     groupSearch.addEventListener("input", () => {
@@ -604,14 +745,27 @@ document.addEventListener("DOMContentLoaded", () => {
             const matchesQuery = g.name.toLowerCase().includes(query);
             return notMember && matchesQuery;
         });
-        renderGroupCards(available, groupsGrid, false);
+        renderGroupCards(available, groupsGrid, false, myBannedGroupIds);
     });
 
     // ── Join group ───────────────────────────────────────
     window.joinGroup = async function(groupId) {
+        // Check if user is banned from this group
+        const { data: ban } = await supabase
+            .from('group_bans')
+            .select('id')
+            .eq('group_id', groupId)
+            .eq('user_id', currentUser.id)
+            .maybeSingle();
+
+        if (ban) {
+            await loadSharingPage();
+            return;
+        }
+
         const { error } = await supabase
             .from('group_members')
-            .insert([{ group_id: groupId, user_id: currentUser.id }]);
+            .insert([{ group_id: groupId, user_id: currentUser.id, user_email: currentUser.email }]);
 
         if (!error) {
             await loadSharingPage();

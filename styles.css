@@ -1015,6 +1015,104 @@ select option {
     flex: 1;
 }
 
+/* ── Group Manage Panel ──────────────────────────────────── */
+.manage-panel {
+    border-top: 1px solid var(--border);
+    margin-top: 0.75rem;
+    padding-top: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    animation: card-pop 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.manage-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.manage-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.slot-stepper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stepper-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg-glass);
+    color: var(--text-sub);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+    padding: 0;
+}
+
+.stepper-btn:hover:not(:disabled) {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: var(--gold-dim);
+}
+
+.stepper-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.stepper-val {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-main);
+    min-width: 18px;
+    text-align: center;
+    font-family: 'Playfair Display', serif;
+}
+
+.manage-members-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    width: 100%;
+    margin-top: 0.1rem;
+}
+
+.manage-member-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.4rem 0.65rem;
+}
+
+.manage-member-name {
+    font-size: 0.8rem;
+    color: var(--text-sub);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 120px;
+}
+
 /* ── Chat Panel ──────────────────────────────────────────── */
 .chat-panel {
     background: var(--bg-card);
