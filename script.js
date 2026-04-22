@@ -750,15 +750,31 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ── Join group ───────────────────────────────────────
     window.joinGroup = async function(groupId) {
-        // Check if user is banned from this group
-        const { data: ban } = await supabase
-            .from('group_bans')
-            .select('id')
-            .eq('group_id', groupId)
-            .eq('user_id', currentUser.id)
-            .maybeSingle();
+        // Fetch fresh group state and ban status in parallel
+        const [groupResult, banResult] = await Promise.all([
+            supabase
+                .from('subscription_groups')
+                .select('max_members, group_members(user_id)')
+                .eq('id', groupId)
+                .maybeSingle(),
+            supabase
+                .from('group_bans')
+                .select('id')
+                .eq('group_id', groupId)
+                .eq('user_id', currentUser.id)
+                .maybeSingle()
+        ]);
 
-        if (ban) {
+        if (banResult.data) {
+            await loadSharingPage();
+            return;
+        }
+
+        const group = groupResult.data;
+        if (!group) return;
+
+        const memberCount = (group.group_members || []).length;
+        if (memberCount >= group.max_members) {
             await loadSharingPage();
             return;
         }
