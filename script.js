@@ -38,6 +38,42 @@ function shortName(email) {
     return email ? email.split('@')[0] : 'user';
 }
 
+function getNextBillingDate(startDateStr, cycle) {
+    if (!startDateStr) return null;
+    const start = new Date(startDateStr + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let next = new Date(start);
+
+    // Always advance at least one cycle — the start date is assumed already paid
+    if (cycle === 'Weekly') {
+        const weeks = next < today
+            ? Math.ceil((today - next) / (7 * 86400000))
+            : 1;
+        next.setDate(next.getDate() + weeks * 7);
+    } else if (cycle === 'Monthly') {
+        next.setMonth(next.getMonth() + 1);
+        while (next <= today) next.setMonth(next.getMonth() + 1);
+    } else if (cycle === 'Yearly') {
+        next.setFullYear(next.getFullYear() + 1);
+        while (next <= today) next.setFullYear(next.getFullYear() + 1);
+    }
+    return next;
+}
+
+function formatNextBilling(date) {
+    if (!date) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diff = Math.round((date - today) / 86400000);
+    const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    if (diff === 0) return { label, urgency: 'today' };
+    if (diff <= 3) return { label, urgency: 'soon' };
+    if (diff <= 7) return { label, urgency: 'week' };
+    return { label, urgency: 'normal' };
+}
+
 function timeAgo(dateStr) {
     const now = new Date();
     const d = new Date(dateStr);
@@ -273,9 +309,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // ── Add Subscription ─────────────────────────────────
     addSubForm.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const name  = document.getElementById("sub-name").value.trim();
-        const cost  = parseFloat(document.getElementById("sub-cost").value);
-        const cycle = document.getElementById("sub-cycle").value;
+        const name      = document.getElementById("sub-name").value.trim();
+        const cost      = parseFloat(document.getElementById("sub-cost").value);
+        const cycle     = document.getElementById("sub-cycle").value;
+        const startDate = document.getElementById("sub-start-date").value || null;
         const submitBtn = addSubForm.querySelector('button[type="submit"]');
         submitBtn.disabled = true;
         submitBtn.textContent = "Adding...";
@@ -288,6 +325,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 name,
                 cost,
                 cycle,
+                billing_start_date: startDate,
                 is_shared: false,
                 max_members: null
             }])
@@ -430,6 +468,9 @@ document.addEventListener("DOMContentLoaded", () => {
             if (sub.cycle === 'Yearly')  monthlyNote = `≈ $${monthly.toFixed(2)} / mo`;
             if (sub.cycle === 'Weekly')  monthlyNote = `≈ $${monthly.toFixed(2)} / mo`;
 
+            const nextDate = getNextBillingDate(sub.billing_start_date, sub.cycle);
+            const nextBilling = formatNextBilling(nextDate);
+
             const isShared = sub.is_shared || false;
             const maxMembers = sub.max_members || 4;
 
@@ -459,6 +500,11 @@ document.addEventListener("DOMContentLoaded", () => {
                         <span>per ${sub.cycle.toLowerCase()}</span>
                     </div>
                 </div>
+                ${nextBilling ? `
+                <div class="sub-billing-row sub-billing--${nextBilling.urgency}">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>Next bill: <strong>${nextBilling.label}</strong></span>
+                </div>` : ''}
                 <div class="sub-share-row">
                     <span class="sub-share-label">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>

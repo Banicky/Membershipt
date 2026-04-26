@@ -231,6 +231,16 @@ select option:checked:not(:disabled) {
     color: var(--gold-light);
 }
 
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.6) sepia(1) saturate(2) hue-rotate(5deg);
+    cursor: pointer;
+    opacity: 0.6;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+}
+
 /* ── Number input custom spinner ─────────────────────────── */
 input[type="number"] {
     -moz-appearance: textfield;
@@ -611,7 +621,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .inline-form {
     display: grid;
-    grid-template-columns: 2fr 0.9fr 1fr auto;
+    grid-template-columns: 2fr 0.9fr 1fr 1.1fr auto;
     gap: 0.9rem;
     align-items: end;
 }
@@ -821,6 +831,56 @@ input[type="number"]::-webkit-inner-spin-button {
     color: var(--text-sub);
     font-weight: 500;
 }
+
+/* ── Next Billing Date on Sub Cards ─────────────────────── */
+.sub-billing-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    padding: 0.5rem 0.65rem;
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+}
+
+.sub-billing-row svg {
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.sub-billing-row strong {
+    font-weight: 600;
+    color: var(--text-sub);
+}
+
+.sub-billing--today {
+    color: var(--danger);
+    background: rgba(229,100,122,0.07);
+    border-color: rgba(229,100,122,0.2);
+}
+
+.sub-billing--today svg,
+.sub-billing--today strong { color: var(--danger); opacity: 1; }
+
+.sub-billing--soon {
+    color: #e5a84c;
+    background: rgba(229,168,76,0.07);
+    border-color: rgba(229,168,76,0.2);
+}
+
+.sub-billing--soon svg,
+.sub-billing--soon strong { color: #e5a84c; opacity: 1; }
+
+.sub-billing--week {
+    color: var(--gold);
+    background: var(--gold-dim);
+    border-color: rgba(201,168,76,0.2);
+}
+
+.sub-billing--week svg,
+.sub-billing--week strong { color: var(--gold); opacity: 1; }
 
 /* ── Share Toggle on Sub Cards ───────────────────────────── */
 .sub-share-row {
