@@ -530,11 +530,45 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 /* ── Stats Bar ───────────────────────────────────────────── */
+.stats-bar-wrapper {
+    margin-bottom: 2rem;
+}
+
+.stats-view-toggle {
+    display: flex;
+    gap: 0.35rem;
+    margin-bottom: 0.85rem;
+}
+
+.stats-toggle-btn {
+    padding: 0.35rem 0.9rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    letter-spacing: 0.04em;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.stats-toggle-btn:hover {
+    color: var(--text-sub);
+    border-color: rgba(255,255,255,0.14);
+}
+
+.stats-toggle-btn.active {
+    background: var(--gold-dim);
+    border-color: rgba(201,168,76,0.35);
+    color: var(--gold);
+}
+
 .stats-bar {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
-    margin-bottom: 2rem;
 }
 
 .stat-card {

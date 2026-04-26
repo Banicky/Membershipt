@@ -67,21 +67,27 @@
         <div id="page-dashboard" class="dashboard-content">
 
             <!-- Stats Bar -->
-            <div class="stats-bar">
-                <div class="stat-card">
-                    <p class="stat-label">Monthly Total</p>
-                    <p class="stat-value gold" id="stat-monthly">$0.00</p>
-                    <p class="stat-sub">estimated per month</p>
+            <div class="stats-bar-wrapper">
+                <div class="stats-view-toggle">
+                    <button id="toggle-solo" class="stats-toggle-btn active">Solo</button>
+                    <button id="toggle-split" class="stats-toggle-btn">After Split</button>
                 </div>
-                <div class="stat-card">
-                    <p class="stat-label">Annual Spend</p>
-                    <p class="stat-value" id="stat-annual">$0.00</p>
-                    <p class="stat-sub">projected this year</p>
-                </div>
-                <div class="stat-card">
-                    <p class="stat-label">Active Plans</p>
-                    <p class="stat-value" id="stat-count">0</p>
-                    <p class="stat-sub">subscriptions tracked</p>
+                <div class="stats-bar">
+                    <div class="stat-card">
+                        <p class="stat-label" id="stat-monthly-label">Monthly Total</p>
+                        <p class="stat-value gold" id="stat-monthly">$0.00</p>
+                        <p class="stat-sub" id="stat-monthly-sub">estimated per month</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="stat-label" id="stat-annual-label">Annual Spend</p>
+                        <p class="stat-value" id="stat-annual">$0.00</p>
+                        <p class="stat-sub" id="stat-annual-sub">projected this year</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="stat-label" id="stat-count-label">Active Plans</p>
+                        <p class="stat-value" id="stat-count">0</p>
+                        <p class="stat-sub" id="stat-count-sub">subscriptions tracked</p>
+                    </div>
                 </div>
             </div>
 

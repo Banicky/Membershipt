@@ -446,8 +446,34 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
+    // ── Stats view toggle ────────────────────────────────
+    let statViewMode = 'solo';
+    let lastSoloStats  = { monthly: 0, count: 0 };
+    let lastSplitStats = { monthly: 0, count: 0 };
+
+    const toggleSoloBtn  = document.getElementById('toggle-solo');
+    const toggleSplitBtn = document.getElementById('toggle-split');
+
+    toggleSoloBtn.addEventListener('click', () => {
+        statViewMode = 'solo';
+        toggleSoloBtn.classList.add('active');
+        toggleSplitBtn.classList.remove('active');
+        renderSubscriptions();
+    });
+
+    toggleSplitBtn.addEventListener('click', () => {
+        statViewMode = 'split';
+        toggleSplitBtn.classList.add('active');
+        toggleSoloBtn.classList.remove('active');
+        renderSubscriptions();
+    });
+
     // ── Render Subscriptions ─────────────────────────────
+    let renderSubscriptionsToken = 0;
+
     async function renderSubscriptions() {
+        const token = ++renderSubscriptionsToken;
+
         subsGrid.innerHTML = `
             ${Array(3).fill(`
                 <div class="skeleton-card">
@@ -459,11 +485,22 @@ document.addEventListener("DOMContentLoaded", () => {
             `).join('')}
         `;
 
-        const { data: subs, error } = await supabase
-            .from('subscriptions')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .order('created_at', { ascending: false });
+        const [subsResult, myMembershipsResult] = await Promise.all([
+            supabase
+                .from('subscriptions')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .order('created_at', { ascending: false }),
+            supabase
+                .from('group_members')
+                .select('group_id')
+                .eq('user_id', currentUser.id)
+        ]);
+
+        if (token !== renderSubscriptionsToken) return;
+
+        const { data: subs, error } = subsResult;
+        const myMemberGroupIds = new Set((myMembershipsResult.data || []).map(m => m.group_id));
 
         subsGrid.innerHTML = "";
 
@@ -474,15 +511,54 @@ document.addEventListener("DOMContentLoaded", () => {
                     <p>No subscriptions yet — add your first plan above.</p>
                 </div>
             `;
-            updateStats(0, 0);
+            updateStats(0, 0, 0, 0);
             return;
         }
 
-        let monthlyTotal = 0;
+        // Fetch member counts for all shared groups owned by this user
+        const sharedSubs = subs.filter(s => s.is_shared);
+        let groupMemberCounts = {};
+        if (sharedSubs.length > 0) {
+            const { data: groupRows } = await supabase
+                .from('subscription_groups')
+                .select('subscription_id, group_members(user_id)')
+                .in('subscription_id', sharedSubs.map(s => s.id));
+            (groupRows || []).forEach(g => {
+                groupMemberCounts[g.subscription_id] = (g.group_members || []).length || 1;
+            });
+        }
+
+        // Fetch groups the user has joined from other owners, for split view
+        let joinedGroupsMonthly = 0;
+        let joinedGroupCount = 0;
+        if (myMemberGroupIds.size > 0) {
+            const { data: joinedGroups } = await supabase
+                .from('subscription_groups')
+                .select('subscription_id, cost, cycle, max_members, owner_id, group_members(user_id)')
+                .in('id', [...myMemberGroupIds]);
+            (joinedGroups || []).forEach(g => {
+                if (g.owner_id === currentUser.id) return; // own groups counted via subs
+                const memberCount = (g.group_members || []).length || 1;
+                joinedGroupsMonthly += getMonthlyEquiv(parseFloat(g.cost), g.cycle) / memberCount;
+                joinedGroupCount++;
+            });
+        }
+
+        let soloMonthly = 0;
+        let splitMonthly = 0;
+        let sharedCount = 0;
 
         subs.forEach((sub, idx) => {
             const monthly = getMonthlyEquiv(parseFloat(sub.cost), sub.cycle);
-            monthlyTotal += monthly;
+            soloMonthly += monthly;
+
+            if (sub.is_shared) {
+                const members = groupMemberCounts[sub.id] || 1;
+                splitMonthly += monthly / members;
+                sharedCount++;
+            } else {
+                splitMonthly += monthly;
+            }
 
             const colorIdx  = idx % COLORS.length;
             const badgeChar = getEmoji(sub.name);
@@ -552,15 +628,30 @@ document.addEventListener("DOMContentLoaded", () => {
             subsGrid.appendChild(card);
         });
 
-        updateStats(monthlyTotal, subs.length);
+        splitMonthly += joinedGroupsMonthly;
+        updateStats(soloMonthly, subs.length, splitMonthly, subs.length + joinedGroupCount);
     }
 
-    function updateStats(monthlyTotal, count) {
-        const annual = monthlyTotal * 12;
-        totalMonthlyCost.textContent = `Total: $${monthlyTotal.toFixed(2)} / mo`;
-        animateValue(statMonthly, monthlyTotal, (v) => `$${v.toFixed(2)}`);
-        animateValue(statAnnual,  annual,        (v) => `$${v.toFixed(2)}`);
-        animateValue(statCount,   count,          (v) => Math.round(v).toString());
+    function updateStats(soloMonthly, soloCount, splitMonthly, splitCount) {
+        lastSoloStats  = { monthly: soloMonthly,  count: soloCount };
+        lastSplitStats = { monthly: splitMonthly, count: splitCount };
+        const isSplit = statViewMode === 'split';
+        applyStats(isSplit ? splitMonthly : soloMonthly, isSplit ? splitCount : soloCount, isSplit);
+    }
+
+    function applyStats(monthly, count, isSplit) {
+        const annual = monthly * 12;
+        totalMonthlyCost.textContent = `Total: $${monthly.toFixed(2)} / mo`;
+        animateValue(statMonthly, monthly, (v) => `$${v.toFixed(2)}`);
+        animateValue(statAnnual,  annual,  (v) => `$${v.toFixed(2)}`);
+        animateValue(statCount,   count,   (v) => Math.round(v).toString());
+
+        document.getElementById('stat-monthly-label').textContent = isSplit ? 'My Monthly Share' : 'Monthly Total';
+        document.getElementById('stat-monthly-sub').textContent   = isSplit ? 'after splitting costs' : 'estimated per month';
+        document.getElementById('stat-annual-label').textContent  = isSplit ? 'My Annual Share' : 'Annual Spend';
+        document.getElementById('stat-annual-sub').textContent    = isSplit ? 'after splitting costs' : 'projected this year';
+        document.getElementById('stat-count-label').textContent   = isSplit ? 'Plans (Split View)' : 'Active Plans';
+        document.getElementById('stat-count-sub').textContent     = isSplit ? 'your own + joined groups' : 'subscriptions tracked';
     }
 
     function animateValue(el, target, formatter) {
