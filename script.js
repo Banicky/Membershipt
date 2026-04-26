@@ -95,6 +95,26 @@ document.addEventListener("DOMContentLoaded", () => {
     let chatSubscription = null;
     let pendingToggle = null; // Promise of any in-flight toggleShareSubscription write
 
+    // ── Free trial → auto-fill billing start date ────────
+    const subTrialInput     = document.getElementById("sub-trial");
+    const subStartDateInput = document.getElementById("sub-start-date");
+
+    subTrialInput.addEventListener("input", () => {
+        const days = parseInt(subTrialInput.value, 10);
+        if (days > 0) {
+            const end = new Date();
+            end.setDate(end.getDate() + days);
+            const y = end.getFullYear();
+            const m = String(end.getMonth() + 1).padStart(2, '0');
+            const d = String(end.getDate()).padStart(2, '0');
+            subStartDateInput.value = `${y}-${m}-${d}`;
+            subStartDateInput.disabled = true;
+        } else {
+            subStartDateInput.value = '';
+            subStartDateInput.disabled = false;
+        }
+    });
+
     // ── Custom number spinner for sub-cost ───────────────
     const subCostInput = document.getElementById("sub-cost");
     document.querySelector(".spin-up").addEventListener("mousedown", (e) => {
@@ -312,7 +332,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const name      = document.getElementById("sub-name").value.trim();
         const cost      = parseFloat(document.getElementById("sub-cost").value);
         const cycle     = document.getElementById("sub-cycle").value;
-        const startDate = document.getElementById("sub-start-date").value || null;
+        const trialDays = parseInt(subTrialInput.value, 10) || null;
+        const startDate = subStartDateInput.value || null;
         const submitBtn = addSubForm.querySelector('button[type="submit"]');
         submitBtn.disabled = true;
         submitBtn.textContent = "Adding...";
@@ -326,6 +347,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 cost,
                 cycle,
                 billing_start_date: startDate,
+                trial_days: trialDays,
                 is_shared: false,
                 max_members: null
             }])
@@ -337,6 +359,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (!error) {
             addSubForm.reset();
+            subStartDateInput.disabled = false;
             renderSubscriptions();
         }
     });
@@ -468,7 +491,14 @@ document.addEventListener("DOMContentLoaded", () => {
             if (sub.cycle === 'Yearly')  monthlyNote = `≈ $${monthly.toFixed(2)} / mo`;
             if (sub.cycle === 'Weekly')  monthlyNote = `≈ $${monthly.toFixed(2)} / mo`;
 
-            const nextDate = getNextBillingDate(sub.billing_start_date, sub.cycle);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const trialEnd = sub.billing_start_date ? new Date(sub.billing_start_date + 'T00:00:00') : null;
+            const inTrial = sub.trial_days && trialEnd && trialEnd > today;
+            const trialDaysLeft = inTrial ? Math.round((trialEnd - today) / 86400000) : 0;
+
+            // During trial, the next bill is the trial end date itself; after trial, compute normally
+            const nextDate = inTrial ? trialEnd : getNextBillingDate(sub.billing_start_date, sub.cycle);
             const nextBilling = formatNextBilling(nextDate);
 
             const isShared = sub.is_shared || false;
@@ -486,6 +516,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <div class="sub-info">
                             <p class="sub-name">${sub.name}</p>
                             <span class="sub-cycle-badge">${sub.cycle}</span>
+                            ${inTrial ? `<span class="trial-badge">Trial · ${trialDaysLeft}d left</span>` : ''}
                             ${isShared ? '<span class="share-status-badge">Shared</span>' : ''}
                         </div>
                     </div>
